@@ -3,7 +3,7 @@ import pymongo
 from pymongo import MongoClient
 from bson.dbref import DBRef
 from dotenv import load_dotenv
-import getNewId
+from HelperFuncs import getNewId
 load_dotenv()
 
 uri = os.getenv("MONGO_URI")
