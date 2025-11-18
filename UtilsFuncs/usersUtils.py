@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pymongo
 from pymongo import MongoClient
 from bson.dbref import DBRef
@@ -12,7 +14,7 @@ client = MongoClient(uri)
 
 try:
     client.admin.command('ping')
-    print("Successfully connected to MongoDB Atlas!")
+    print("Successfully connected to MongoDB Atlas!(userUtils.py)")
 except Exception as e:
     print("Connection failed:", e)
     exit()
@@ -50,7 +52,7 @@ def fetch_user_details(userId, db = db):
             "status" : "success",
             "message" : "User Details fetched successfully",
             "data" : { 
-                "Accountid" : accountDetails['_id'],
+                "AccountId" : accountDetails['_id'],
                 "UserId" : userDetails['_id'],
                 "UserName" : accountDetails['UserName'],
                 "Name" : userDetails['Name'],
@@ -200,6 +202,41 @@ def update_username(accntId, userName, newUserName, password, db = db):
     finally:
         activeTrans.delete_one({ "_id" : accntId })
 
+def suggest_artists_city(favArtists, city, db = db):
+    
+    artists = db['Artists']
+    
+    try:
+        
+        result = [serialize_doc(x) for x in artists.find(
+            { "_id" : { "$nin" : favArtists }, "City" : city }
+        )]
+        
+        if not result:
+            return { "status" : "failed", "message" : "No artists to suggest" }
+        else:
+            return { "status" : "success", "message" : "Artists suggestions", "data" : result }
+    except Exception as e:
+        return { "status" : "failed", "message" : str(e) }
+
+
+def suggest_artists_genres(favArtists, favGenres, db = db):
+    
+    artists = db['Artists']
+    
+    try:
+        
+        result = [serialize_doc(x) for x in artists.find(
+            { "_id" : { "$nin" : favArtists }, "Genre" : { "$in" : favGenres } }
+        )]
+        
+        if not result:
+            return { "status" : "failed", "message" : "No artists to suggest" }
+        else:
+            return { "status" : "success", "message" : "Artists suggestions", "data" : result }
+    except Exception as e:
+        return { "status" : "failed", "message" : str(e) }
+
 def flag_fest(userId, festId, db = db):
     
     '''We are not performing checks for unavailability of fest or user
@@ -209,12 +246,22 @@ def flag_fest(userId, festId, db = db):
     
     users = db['Users']
     
-    result = users.update_one(
-        { "_id" : userId },
-        { "$addToSet" : { "FlagFests" : festId } }
-    )
+    try:
+        
+        result = users.update_one(
+            { "_id" : userId },
+            { "$addToSet" : { "FlagFests" : festId } }
+        )
+        
+        if result.modified_count > 0:
+            return { "status" : "success", "message" : "fest flagged" }
+        elif result.modified_count == 0:
+            return { "status" : "failed", "message" : "Unable to flag" }
+        else:
+            return { "status" : "failed", "message" : "failed" }
     
-    return { "status" : "success", "message" : "fest flagged" }
+    except Exception as e:
+        return { "status" : "failed", "message" : "No artists to suggest" }
 
 def unflag_fest(userId, festId, db = db):
     
@@ -337,96 +384,98 @@ if __name__ == "__main__":
         
         print(items)
     
-    print(f"\n1/9 Passed\n")
+    res = suggest_artists(favArtists = res['data']['favArtist'])
+    print(res['data'] if res['status'] == 'success' else res['message'])
+    # print(f"\n1/9 Passed\n")
     
-    print(f"Testing Function update_email()")
+    # print(f"Testing Function update_email()")
     
-    res = update_email(accntId = 'acc1', password = 'pass123', newEmail = 'jas236@gmail.com')
+    # res = update_email(accntId = 'acc1', password = 'pass123', newEmail = 'jas236@gmail.com')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n2/9 Passed\n")
+    # print(f"\n2/9 Passed\n")
     
-    print(f"Testing Function update_city()")
+    # print(f"Testing Function update_city()")
     
-    res = update_city(accntId = 'acc1', password = 'pass123', newCity = 'Dehradun')
+    # res = update_city(accntId = 'acc1', password = 'pass123', newCity = 'Dehradun')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n3/9 Passed\n")
+    # print(f"\n3/9 Passed\n")
     
-    print("Testing Function update_username()")
+    # print("Testing Function update_username()")
     
-    res = update_username(accntId = 'acc1', userName = 'user_1', newUserName = 'Jas_23', password = 'pass123')
+    # res = update_username(accntId = 'acc1', userName = 'user_1', newUserName = 'Jas_23', password = 'pass123')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n4/9 Passed\n")
+    # print(f"\n4/9 Passed\n")
     
-    print(f"Testing Function flag_fest()")
+    # print(f"Testing Function flag_fest()")
     
-    res = flag_fest(userId = 'user1', festId = 'fest1')
+    # res = flag_fest(userId = 'user1', festId = 'fest1')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n5/9 Passed\n") 
+    # print(f"\n5/9 Passed\n") 
     
-    print(f"Testing Function unflag_fest()")
+    # print(f"Testing Function unflag_fest()")
     
-    res = unflag_fest(userId = 'user1', festId = 'fest2')
+    # res = unflag_fest(userId = 'user1', festId = 'fest2')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n6/9 Passed\n")
+    # print(f"\n6/9 Passed\n")
     
-    print(f"Testing Function mark_artist_fav()")
+    # print(f"Testing Function mark_artist_fav()")
     
-    res = mark_artist_fav(userId = 'user1', artistUserName = 'artist_3')
+    # res = mark_artist_fav(userId = 'user1', artistUserName = 'artist_3')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n7/9 Passed\n")
+    # print(f"\n7/9 Passed\n")
     
-    print(f"Testing Function remove_artist_fav()")
+    # print(f"Testing Function remove_artist_fav()")
     
-    res = remove_artist_fav(userId = 'user1', artistUserName = 'artist_24')
+    # res = remove_artist_fav(userId = 'user1', artistUserName = 'artist_24')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
     
-    print(f"\n8/9 Passed\n")
+    # print(f"\n8/9 Passed\n")
     
-    print(f"Testing Function get_fav_artists()")
+    # print(f"Testing Function get_fav_artists()")
     
-    res = get_fav_artists(userId = 'user1')
+    # res = get_fav_artists(userId = 'user1')
     
-    if res['status'] == 'failed':
-        print(res['message'])
-        raise 'Error'
-        exit()
+    # if res['status'] == 'failed':
+    #     print(res['message'])
+    #     raise 'Error'
+    #     exit()
         
     
-    for items in res['data'].items:
-        print(items)
+    # for items in res['data'].items:
+    #     print(items)
     
-    print(f"\n9/9 Passed\n")
+    # print(f"\n9/9 Passed\n")
