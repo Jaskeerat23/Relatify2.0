@@ -1,13 +1,17 @@
 ''''''
 
+# import sys
 import os
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import fastapi
 from pydantic import BaseModel
 from typing import Any, List, Dict
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
-from LoginandSignUp import login, signUp
+from LoginandSignUp import login
+from LoginandSignUp import signUp
+# from LoginandSignUp import login, signUp
 from UtilsFuncs import (
     usersUtils,
     festsEventsUtils,
@@ -17,7 +21,7 @@ from UtilsFuncs import (
     jobsUtils
 )
 
-from apiData import (
+from APIFiles.apiData import (
     LoginData,
     SignUpData,
     updateUserName,
@@ -30,6 +34,8 @@ from apiData import (
     ApplicationDetails,
     ApplicationStatus
 )
+
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -48,9 +54,19 @@ db = client['festdb']
 app = fastapi.FastAPI()
 app.state.active_user = {}
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or specify your frontend domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 '''Basic Login, SignUp and User Functions'''
 
 def fetch_details_(userId, role):
+    
+    details = {}
     
     if role == "Users":
         
@@ -68,7 +84,10 @@ def fetch_details_(userId, role):
         
         details = crewMemUtils.fetch_cm_details(userId = userId, role = 'CrewMember', db = db)
     
-    app.state.active_user = details
+    if details['status'] != 'success':
+        return details
+    
+    return { 'status' : 'success', 'message' : 'Details fetched successfully', 'data' : details }
 
 @app.post("/login")
 def login_(data: LoginData):
@@ -79,19 +98,24 @@ def login_(data: LoginData):
     
     res = login.login_user(data.username, True, data.password)
     
-    loginData = res['data']
     
     if res['status'] != 'success':
+        print(res)
         return res
     
+    loginData = res['data']
+    
+    print("Login data is", loginData)
+    
+    details = {}
     
     if loginData.get('Collection', '') == "Users":
         
-        details = usersUtils.fetch_user_details(userId = loginData['UserId'], db = db)
+        details = usersUtils.fetch_user_details(userId = loginData['AccountId'], db = db)
     
     elif loginData.get('Collection', '') == "Organizers":
         
-        details = orgUtils.fetch_org_details(userId = loginData['UserId'], role = 'Organizers', db = db)
+        details = orgUtils.fetch_org_details(orgId = loginData['UserId'], role = 'Organizers', db = db)
     
     elif loginData.get('Collection', '') == 'Artists':
         
@@ -101,7 +125,14 @@ def login_(data: LoginData):
         
         details = crewMemUtils.fetch_cm_details(userId = loginData['UserId'], role = 'CrewMember', db = db)
     
-    app.state.active_user = details
+    print("details", details)
+    if details['status'] != 'success':
+        return details
+    
+    print(details)
+    
+    app.state.active_user = details['data']
+    print("app.state.active_user : ", app.state.active_user)
     
     if 'Role' not in list(app.state.active_user.keys()):
         app.state.active_user.update({ 'Role' : loginData.get('Collection', '') })
@@ -137,7 +168,7 @@ def signup_user_(data: SignUpData):
 def update_username_(data: updateUserName):
     
     '''This function handles API calls for updating username'''
-
+    print(app.state.active_user)
     if not app.state.active_user or 'AccountId' not in app.state.active_user:
         return { 'status' : 'failed', 'message' : 'Not Logged In' }
     
@@ -149,7 +180,9 @@ def update_username_(data: updateUserName):
     if res['status'] == 'failed':
         return res
     
-    fetch_details_(userId = app.state.active_user['UserId'], role = app.state.active_user['Role'])
+    app.state.active_user['UserName'] = data.newUserName
+    
+    # fetch_details_(userId = app.state.active_user['UserId'], role = app.state.active_user['Role'])
     
     res['data'] = app.state.active_user
     
@@ -171,7 +204,9 @@ def update_email_(data: updateEmail):
     if res['status'] == 'failed':
         return res
     
-    fetch_details_(userId = app.state.active_user['UserId'], role = app.state.active_user['Role'])
+    app.state.active_user['Email'] = data.newEmail
+    
+    # fetch_details_(userId = app.state.active_user['UserId'], role = app.state.active_user['Role'])
     
     res.update({ "data": app.state.active_user })
     return res
@@ -192,7 +227,9 @@ def update_city_(data: updateCity):
     if res['status'] == 'failed':
         return res
     
-    fetch_details_(userId = app.state.active_user['UserId'], role = app.state.active_user['Role'])
+    app.state.active_user['City'] = data.newCity
+    
+    # fetch_details_(userId = app.state.active_user['UserId'], role = app.state.active_user['Role'])
     
     res.update({ "data": app.state.active_user })
     return res
@@ -255,6 +292,46 @@ def get_fav_artists_():
     res = usersUtils.get_fav_artists(userId = app.state.active_user['UserId'], db = db)
     return res
 
+@app.get('/fetch_artists_carousel_details')
+def fetch_artists_carousel_details_():
+    
+    if app.state.active_user.get('Role') != 'Users':
+        return { 'status' : 'failed', 'message' : 'You are not authorized for this Operation!!' }
+    
+    res = artistUtils.fetch_artists_carousel_details(limit = 10, db = db)
+    
+    if res['status'] != 'success':
+        return res
+    
+    return res
+
+@app.get('/suggest_artists_city')
+def suggest_artists_city_(carousel: bool = True):
+    
+    res = usersUtils.suggest_artists_city(favArtists = app.state.active_user['favArtist'], city = app.state.active_user['City'], db = db)
+    
+    if res['status'] != 'success':
+        return res
+    
+    if carousel:
+        
+        filteredData = [artistUtils.filter_artist_details_for_carousel(artistDetails = x) for x in res]
+    
+    return { 'status' : 'success', 'message' : 'Artists that belongs to user city!!', 'data' : filteredData }
+
+@app.get('/suggest_artists_genres')
+def suggest_artists_genres_(carousel: bool = True):
+    
+    res = usersUtils.suggest_artists_genres(favArtists = app.state.active_user['favArtist'], favGenres = app.state.active_user['FavGenre'], db = db)
+    
+    if res['status'] != 'success':
+        return res
+    
+    if carousel:
+        
+        filteredData = [artistUtils.filter_artist_details_for_carousel(artistDetails = x) for x in res]
+    
+    return { 'status' : 'success', 'message' : 'Artists that belongs to user city!!', 'data' : filteredData }
 
 '''Fest Event Functions APIs'''
 
@@ -285,57 +362,79 @@ def fetch_fest_user_viewed_(carousel: bool = True):
     
     res = festsEventsUtils.fetch_fest_user_viewed(viewedFestIds = app.state.active_user['FestsViewed'], db = db)
     
+    # print(res)
     if res['status'] != 'success':
+        print(res)
         return res
     
     if carousel:
-        res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
-        res['message'] = 'Successfully fetch fests and filtered details for carousel'
+        
+        fests = res['data']
+        
+        filteredDetails = [festsEventsUtils.filter_details_for_carousel(festDetails = x) for x in fests]
+        
+        # res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
+        # res['message'] = 'Successfully fetch fests and filtered details for carousel'
     
-    return res
+    return { 'status' : 'success', 'message' : 'Successfully fetch fests and filtered details for carousel', 'data' : filteredDetails }
 
 @app.get('/fetch_fest_user_city')
 def fetch_fest_user_city_(carousel: bool = True):
     
     
     res = festsEventsUtils.fetch_fest_user_city(city = app.state.active_user['City'], db = db)
-
+    print(app.state.active_user['City'])
+    print(res)
     if res['status'] != 'success':
         return res
     
     if carousel:
-        res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
-        res['message'] = 'Successfully fetch fests and filtered details for carousel'
+        fests = res['data']
+        
+        filteredDetails = [festsEventsUtils.filter_details_for_carousel(festDetails = x) for x in fests]
+        
+        # res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
+        # res['message'] = 'Successfully fetch fests and filtered details for carousel'
     
-    return res
+    return { 'status' : 'success', 'message' : 'Successfully fetch fests and filtered details for carousel', 'data' : filteredDetails }
 
 @app.get('/fetch_fest_user_fav_genre')
 def fetch_fest_user_fav_genre_(carousel: bool = True):
     
     res = festsEventsUtils.fetch_fest_user_fav_genre(favGenres = app.state.active_user['FavGenre'], db = db)
 
+    print(res)
     if res['status'] != 'success':
         return res
     
     if carousel:
-        res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
-        res['message'] = 'Successfully fetch fests and filtered details for carousel'
+        fests = res['data']
+        
+        filteredDetails = [festsEventsUtils.filter_details_for_carousel(festDetails = x) for x in fests]
+        
+        # res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
+        # res['message'] = 'Successfully fetch fests and filtered details for carousel'
     
-    return res
+    return { 'status' : 'success', 'message' : 'Successfully fetch fests and filtered details for carousel', 'data' : filteredDetails }
 
 @app.get('/fetch_fest_user_fav_artist')
 def fetch_fest_user_fav_artist_(carousel: bool = True):
     
     res = festsEventsUtils.fetch_fest_user_fav_artist(favArtists = app.state.active_user['favArtist'], db = db)
 
+    print(res)
     if res['status'] != 'success':
         return res
     
     if carousel:
-        res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
-        res['message'] = 'Successfully fetch fests and filtered details for carousel'
-
-    return res
+        fests = res['data']
+        
+        filteredDetails = [festsEventsUtils.filter_details_for_carousel(festDetails = x) for x in fests]
+        
+        # res['data'] = festsEventsUtils.filter_details_for_carousel(festDetails = res['data'])
+        # res['message'] = 'Successfully fetch fests and filtered details for carousel'
+    
+    return { 'status' : 'success', 'message' : 'Successfully fetch fests and filtered details for carousel', 'data' : filteredDetails }
 
 '''Jobs and Applications APIs'''
 @app.post('/post_job')
@@ -398,3 +497,12 @@ def delete_jobs_(jobId: str):
     res = jobsUtils.delete_jobs(jobId = jobId, orgId = app.state.active_user['UserId'], db = db)
     
     return res
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "mainAPI:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )

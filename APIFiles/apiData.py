@@ -4,8 +4,7 @@ from datetime import datetime
 
 class LoginData(BaseModel):
     username: str
-    password: str
-    Collection : str    
+    password: str   
 
 class SignUpData(BaseModel):
 
