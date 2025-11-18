@@ -3,7 +3,7 @@ import pymongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from HelperFuncs.serializeDoc import serialize_doc
-from HelperFuncs.fetchAccntDetails import fetch_accnt_details
+# from HelperFuncs.fetchAccntDetails import fetch_accnt_details
 from bson.dbref import DBRef
 load_dotenv()
 
@@ -14,8 +14,7 @@ client = MongoClient(uri)
 try:
     client.admin.command('ping')
     
-    if __name__ == "__main__":
-        print("Successfully connected to database")
+    print("Successfully connected to database(crewMemUtils.py)")
 except Exception as e:
     
     if __name__ == "__main__":
