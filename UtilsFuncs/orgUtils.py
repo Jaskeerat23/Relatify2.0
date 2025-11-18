@@ -3,7 +3,7 @@ import pymongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from HelperFuncs.serializeDoc import serialize_doc
-from HelperFuncs.fetchAccntDetails import fetch_accnt_details
+# from HelperFuncs.fetchAccntDetails import fetch_accnt_details
 from bson.dbref import DBRef
 load_dotenv()
 
@@ -13,7 +13,7 @@ client = MongoClient(uri)
 
 try:
     client.admin.command('ping')
-    print("Successfully connected to database")
+    print("Successfully connected to database(orgUtils.py)")
 except Exception as e:
     print(e)
     exit()
@@ -25,7 +25,7 @@ def filter_org_details_for_role(orgDetails, accntDetails, role):
     data = {
         "AccountId" : accntDetails['_id'],
         "UserId" : orgDetails['_id'],
-        "ProfilePicture" : accntDetails['ProfilePicture'],
+        "ProfilePicture" : accntDetails.get('ProfilePicture', ''),
         "UserName" : accntDetails['UserName'],
         "About" : accntDetails['About'],
         "City" : accntDetails['City'],
@@ -73,3 +73,7 @@ def fetch_org_details(orgId, role, db = db):
                 }
     except Exception as e:
         return { "status" : "failed", "message" : str(e) }
+
+if __name__ == "__name__":
+    
+    fetch_org_details(orgId='acc58', role = 'Organizers',db=db)
