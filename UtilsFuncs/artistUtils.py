@@ -3,7 +3,7 @@ import pymongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from HelperFuncs.serializeDoc import serialize_doc
-from HelperFuncs.fetchAccntDetails import fetch_accnt_details
+# from HelperFuncs.fetchAccntDetails import fetch_accnt_details
 from bson.dbref import DBRef
 load_dotenv()
 
@@ -13,12 +13,18 @@ client = MongoClient(uri)
 
 try:
     client.admin.command('ping')
-    print("Successfully connected to database")
+    print("Successfully connected to MongoDB Atlas (artistUtils.py)")
 except Exception as e:
     print(e)
     exit()
 
 db = client['festdb']
+
+def filter_artist_details_for_carousel(artistDetails):
+    
+    return { 
+        "StageName" : artistDetails.get('StageName', '')
+        }
 
 def filter_artist_details_for_role(artistDetails, accntDetails, role):
     # Always visible
@@ -33,14 +39,14 @@ def filter_artist_details_for_role(artistDetails, accntDetails, role):
         "Description": accntDetails.get("Description", "")
     }
 
-    if role == "organizer":
+    if role == "Organizers":
         data.update({
             "Contact": accntDetails.get("Contact"),
             "PerformanceHistory": artistDetails.get("PerformanceHistory"),
             "Fee": artistDetails.get("Fee")
         })
 
-    elif role == "artist":  # maybe show stats or own analytics
+    elif role == "Artists":  # maybe show stats or own analytics
         data.update({
             "Bookings": artistDetails.get("Bookings"),
             "Revenue": artistDetails.get("Revenue")
