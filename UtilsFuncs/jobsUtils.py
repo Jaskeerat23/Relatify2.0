@@ -13,7 +13,7 @@ client = MongoClient(uri)
 
 try:
     client.admin.command('ping')
-    print("Successfully connected to MongoDB Atlas!")
+    print("Successfully connected to MongoDB Atlas!(jobsUtils.py)")
 except Exception as e:
     print("Connection failed:", e)
     exit()
@@ -206,3 +206,4 @@ def post_job(jobDetails, orgId, db = db):
         
             except Exception as e:
                 return { "status" : "failed", "message" : str(e) }
+
