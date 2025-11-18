@@ -12,7 +12,7 @@ client = MongoClient(uri)
 
 try:
     client.admin.command('ping')
-    print("Successfully connected to database")
+    print("Successfully connected to database(festsEventsUtils.py)")
 except Exception as e:
     print(e)
     exit()
@@ -108,15 +108,20 @@ def fetch_fest_user_fav_artist(favArtists, db = db):
     
     try:
         
-        evtsFavArtist = events.find({
+        print('fav artists', favArtists)
+        
+        evtsFavArtist = list(events.find({
             "ArtistsPerforming" : { "$in" : favArtists }
             },
             { "FestId" : 1 }
-        )
+        ))
+        
+        print("DBRef fests id of fav artist", evtsFavArtist)
         
         festIds = list({ evt['FestId'].id if isinstance(evt['FestId'], DBRef) else evt['FestId']
                         for evt in evtsFavArtist if 'FestId' in evt })
 
+        print("FestIds of fav artist", festIds)
         
         result = [serialize_doc(x) for x in fests.find({
             "_id" : { "$in" : festIds }
