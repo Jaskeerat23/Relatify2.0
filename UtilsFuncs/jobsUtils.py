@@ -3,9 +3,9 @@ import pymongo
 from pymongo import MongoClient
 from bson.dbref import DBRef
 import datetime
-import getNewId
+from HelperFuncs import getNewId
 from dotenv import load_dotenv
-from serializeDoc import serialize_doc
+from HelperFuncs.serializeDoc import serialize_doc
 load_dotenv()
 
 uri = os.getenv("MONGO_URI")

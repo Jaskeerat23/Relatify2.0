@@ -1,12 +1,11 @@
 #Left For Future Expansion ;)
 
-
 import os
 import pymongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from serializeDoc import serialize_doc
-from fetchAccntDetails import fetch_accnt_details
+from HelperFuncs.serializeDoc import serialize_doc
+from HelperFuncs.fetchAccntDetails import fetch_accnt_details
 load_dotenv()
 
 uri = os.getenv("MONGO_URI")
