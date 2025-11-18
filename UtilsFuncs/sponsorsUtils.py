@@ -1,57 +1,57 @@
-#Left For Future Expansion ;)
+# #Left For Future Expansion ;)
 
-import os
-import pymongo
-from pymongo import MongoClient
-from dotenv import load_dotenv
-from HelperFuncs.serializeDoc import serialize_doc
-from HelperFuncs.fetchAccntDetails import fetch_accnt_details
-load_dotenv()
+# import os
+# import pymongo
+# from pymongo import MongoClient
+# from dotenv import load_dotenv
+# from HelperFuncs.serializeDoc import serialize_doc
+# from HelperFuncs.fetchAccntDetails import fetch_accnt_details
+# load_dotenv()
 
-uri = os.getenv("MONGO_URI")
+# uri = os.getenv("MONGO_URI")
 
-client = MongoClient(uri)
+# client = MongoClient(uri)
 
-try:
-    client.admin.command('ping')
+# try:
+#     client.admin.command('ping')
     
-    if __name__ == "__main__":
-        print("Successfully connected to database")
-except Exception as e:
+#     if __name__ == "__main__":
+#         print("Successfully connected to database")
+# except Exception as e:
     
-    if __name__ == "__main__":
-        print(e)
-    exit()
+#     if __name__ == "__main__":
+#         print(e)
+#     exit()
 
-db = client['festdb']
+# db = client['festdb']
 
-def fetch_sponsors_details(userName):
+# def fetch_sponsors_details(userName):
     
-    sponsors = db['sponsors']
+#     sponsors = db['sponsors']
     
-    accntDetails = fetch_accnt_details(userName = userName)
+#     accntDetails = fetch_accnt_details(userName = userName)
     
-    if accntDetails['status'] == 'failed':
-        return accntDetails
+#     if accntDetails['status'] == 'failed':
+#         return accntDetails
     
-    try:
+#     try:
         
-        sponsIdRef = accntDetails['data']['Role']
-        sId = sponsIdRef.id
+#         sponsIdRef = accntDetails['data']['Role']
+#         sId = sponsIdRef.id
         
-        cmDetails = sponsors.find_one({
-            "_id" : sId
-        })
+#         cmDetails = sponsors.find_one({
+#             "_id" : sId
+#         })
         
-        if not cmDetails:
-            return { "status" : "failed", "message" : "Error Fetching Artist!!" }
-        else:
-            return { "status" : "success",
-                    "message" : "Sponsors Details Fetched Successfully",
-                    "data" : {
-                        "AccountDetails" : serialize_doc(accntDetails['data']),
-                        "SponsorsDetails" : serialize_doc(cmDetails)
-                    }
-                }
-    except Exception as e:
-        return { "status" : "failed", "message" : str(e) }
+#         if not cmDetails:
+#             return { "status" : "failed", "message" : "Error Fetching Artist!!" }
+#         else:
+#             return { "status" : "success",
+#                     "message" : "Sponsors Details Fetched Successfully",
+#                     "data" : {
+#                         "AccountDetails" : serialize_doc(accntDetails['data']),
+#                         "SponsorsDetails" : serialize_doc(cmDetails)
+#                     }
+#                 }
+#     except Exception as e:
+#         return { "status" : "failed", "message" : str(e) }
