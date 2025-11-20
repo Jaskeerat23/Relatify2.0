@@ -1,8 +1,8 @@
 ''''''
 
-# import sys
+import sys
 import os
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import fastapi
 from pydantic import BaseModel
 from typing import Any, List, Dict
@@ -18,7 +18,8 @@ from UtilsFuncs import (
     artistUtils,
     orgUtils,
     crewMemUtils,
-    jobsUtils
+    jobsUtils,
+    stageUtils
 )
 
 from APIFiles.apiData import (
@@ -159,8 +160,16 @@ def signup_user_(data: SignUpData):
     have different collections
     '''
     
-    res = signUp.singup_user(accountDetails = data.accntDetails,
-                            roleDetails = data.roleDetails)
+    accntDetails = data.accntDetails.dict()
+    roleDetails = data.roleDetails
+    
+    print(accntDetails)
+    print(roleDetails)
+    
+    res = signUp.singup_user(accountDetails = accntDetails,
+                            roleDetails = roleDetails,
+                            db = db,
+                            client = client)
     
     return res
 
@@ -320,18 +329,48 @@ def suggest_artists_city_(carousel: bool = True):
     return { 'status' : 'success', 'message' : 'Artists that belongs to user city!!', 'data' : filteredData }
 
 @app.get('/suggest_artists_genres')
-def suggest_artists_genres_(carousel: bool = True):
+def suggest_artists_genres_(carousel: bool = True, genres: list[str] = fastapi.Query(default=[])):
     
-    res = usersUtils.suggest_artists_genres(favArtists = app.state.active_user['favArtist'], favGenres = app.state.active_user['FavGenre'], db = db)
-    
-    if res['status'] != 'success':
+    active = app.state.active_user or {}
+
+    # Safe role detection
+    role = active.get('Role', '')
+
+    # For USERS → use their saved preferences
+    if role == 'Users':
+        favArtists = active.get('favArtist', [])
+        favGenres  = active.get('FavGenre', [])
+    else:
+        # For Organizers / Artists / Crew → use genres provided from frontend
+        favArtists = []
+        favGenres  = genres
+
+    # Call DB helper
+    res = usersUtils.suggest_artists_genres(
+        favArtists=favArtists,
+        favGenres=favGenres,
+        db=db
+    )
+
+    # if suggest_artists_genres returns a dict with status
+    if isinstance(res, dict) and res.get("status") != "success":
         return res
-    
+
+    # If it's a list of artists
+    artists = res if isinstance(res, list) else res.get("data", [])
+
+    # Carousel filtering
     if carousel:
-        
-        filteredData = [artistUtils.filter_artist_details_for_carousel(artistDetails = x) for x in res]
-    
-    return { 'status' : 'success', 'message' : 'Artists that belongs to user city!!', 'data' : filteredData }
+        artists = [
+            artistUtils.filter_artist_details_for_carousel(artistDetails=a)
+            for a in artists
+        ]
+
+    return {
+        "status": "success",
+        "message": "Filtered artists successfully",
+        "data": artists
+    }
 
 '''Fest Event Functions APIs'''
 
@@ -497,6 +536,34 @@ def delete_jobs_(jobId: str):
     res = jobsUtils.delete_jobs(jobId = jobId, orgId = app.state.active_user['UserId'], db = db)
     
     return res
+
+
+'''API for stages'''
+@app.get('/fetch_stages_location')
+def fetch_stages_location_(city: str):
+    
+    res = stageUtils.fetch_stages_loaction(city = city, db = db)
+    
+    return res
+
+@app.get('/fetch_stage_details')
+def fetch_stage_details_(_id: str):
+    
+    res = stageUtils.fetch_stage_details(_id = _id, db = db)
+    
+    return res
+
+'''API for organizers'''
+@app.get('/fetch_organizer_fests')
+def fetch_organizer_fests():
+    
+    res = app.state.active_user.get('FestsHosted', '')
+    print(app.state.active_user)
+    print(res)
+    festDetails = [festsEventsUtils.fetch_fest_details(festId = x) for x in res]
+    filteredData = [festsEventsUtils.filter_details_for_carousel(festDetails = x) for x in festDetails]
+    
+    return { 'status' : 'success', 'message' : 'success', 'data' : filteredData }
 
 if __name__ == "__main__":
     import uvicorn
